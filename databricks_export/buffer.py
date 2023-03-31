@@ -54,4 +54,6 @@ class ExportBufferManager:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        return self.commit()
+        self.commit()
+        print(f"Optimizing Table: {self._name}")
+        self._target_table.optimize()
