@@ -123,7 +123,7 @@ class JobRunsHandler:
             self.create_table()
         tgt = DeltaTable.forPath(self._spark, self._target_table_location)
         with ExportBufferManager("Job Runs Buffer", self._spark, tgt,
-                           ["job_id", "run_id"], max_buffer_size=self._buffer_size) as buf:
+                           ["job_id", "run_id", JobRunData.workspace_url_key()], max_buffer_size=self._buffer_size) as buf:
             for r in self.job_runs_iter():
                 data = JobRunData.from_api_to_dict(r, self._workspace_name, self._host)
                 buf.add_one(data)  # buffers 1000 records and merges into
