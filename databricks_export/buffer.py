@@ -56,4 +56,4 @@ class ExportBufferManager:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.commit()
         print(f"Optimizing Table: {self._name}")
-        self._target_table.optimize()
+        self._target_table.optimize().executeCompaction()
