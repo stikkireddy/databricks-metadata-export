@@ -101,7 +101,7 @@ class JobRunsHandler:
         api = f'{self._host.rstrip("/")}/api/2.1/jobs/runs/list'
         api_params = {
             "limit": 25,
-            "expand_tasks": True
+            "expand_tasks": "true"
         }
         api_auth = {"Authorization": f"Bearer {self._token}"}
         resp = requests.get(api, params=api_params, headers=api_auth).json()
