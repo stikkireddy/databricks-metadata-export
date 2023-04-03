@@ -27,21 +27,22 @@ class ExportBufferManager:
 
     def _check_commit(self):
         if self._auto_flush is True and len(self._buffer) >= self._max_buffer_size:
-            print(f"Committing to delta table: ct {self._buffer_use_count}")
-            # TODO: error handling
-            input_data = self._spark.createDataFrame(self._buffer, self._target_table.toDF().schema).alias("s") \
-                .drop_duplicates(self._primary_keys)
-            (self._target_table.alias("t")
-             .merge(input_data,
-                    " and ".join([f"t.{k} = s.{k}" for k in self._primary_keys]))
-             .whenMatchedUpdateAll()
-             .whenNotMatchedInsertAll()
-             .execute())
-            # empty the buffer
-            self._buffer = []
+            self.commit()
+
 
     def commit(self):
-        self._check_commit()
+        print(f"Committing to delta table: ct {self._buffer_use_count}")
+        # TODO: error handling
+        input_data = self._spark.createDataFrame(self._buffer, self._target_table.toDF().schema).alias("s") \
+            .drop_duplicates(self._primary_keys)
+        (self._target_table.alias("t")
+         .merge(input_data,
+                " and ".join([f"t.{k} = s.{k}" for k in self._primary_keys]))
+         .whenMatchedUpdateAll()
+         .whenNotMatchedInsertAll()
+         .execute())
+        # empty the buffer
+        self._buffer = []
 
     def add_one(self, element):
         self._check_commit()
