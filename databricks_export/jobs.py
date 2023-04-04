@@ -99,13 +99,14 @@ class JobsTableHelper:
 
     def _last_n_days_job_clusters_sql(self, last_n_days=7):
         start_time = time.time() * 1000 - last_n_days * 24 * 60 * 60 * 1000
+        where_clause = f"WHERE start_time > {start_time}" if last_n_days > 0 else ""
         return f"""SELECT DISTINCT explode(array_distinct(filter(
           array_union(
             from_json(_raw_data:tasks[*].cluster_instance.cluster_id, "array<string>"),
             array(_raw_data:cluster_instance:cluster_id)
           )  , x -> x is not null))) as distinct_cluster_id 
           FROM delta.`dbfs:/tmp/sri/jobs_delta_dump_v3`
-          WHERE start_time > {start_time}
+          {where_clause}
         """
 
     def last_n_days_job_clusters_df(self, last_n_days=7) -> DataFrame:
