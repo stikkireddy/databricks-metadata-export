@@ -4,8 +4,8 @@ from typing import Optional
 
 from delta import DeltaTable
 from pyspark import Row
-from pyspark.pandas import DataFrame
-from pyspark.sql import SparkSession
+
+from pyspark.sql import SparkSession, DataFrame
 
 from databricks_export import BaseData, get_http_session
 from databricks_export.buffer import ExportBufferManager
@@ -46,6 +46,7 @@ class JobRunsHandler:
         self._buffer_size = buffer_size
 
     def create_table(self):
+        # TODO: replace with delta table builder
         self._spark.createDataFrame([], JobRunData.to_struct_type()) \
             .write \
             .format("delta") \
@@ -60,8 +61,8 @@ class JobRunsHandler:
             "expand_tasks": "true",
         }
         if self._last_n_days > 0:
-            print("Configuring start time")
             start_time = time.time() * 1000 - self._last_n_days * 24 * 60 * 60 * 1000
+            print(f"Configuring start time to: {start_time}")
             api_params["start_time_from"] = start_time
         api_auth = {"Authorization": f"Bearer {self._token}"}
         resp = session.get(api, params=api_params, headers=api_auth).json()
@@ -88,7 +89,6 @@ class JobRunsHandler:
             for r in self.job_runs_iter():
                 data = JobRunData.from_api_to_dict(r, self._workspace_name, self._host.rstrip("/"))
                 buf.add_one(data)  # buffers n records and merges into
-
 
 class JobsTableHelper:
     def __init__(self,

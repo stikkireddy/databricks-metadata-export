@@ -80,3 +80,7 @@ def get_http_session():
     s.mount("https://", HTTPAdapter(max_retries=retries))
     s.mount("http://", HTTPAdapter(max_retries=retries))
     return s
+
+def debug(*args):
+    if os.getenv("DATABRICKS_EXPORT_DEBUG", None) is not None:
+        print(*args)
