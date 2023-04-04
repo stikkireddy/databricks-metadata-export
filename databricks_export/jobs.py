@@ -81,7 +81,31 @@ class JobRunsHandler:
             self.create_table()
         tgt = DeltaTable.forPath(self._spark, self._target_table_location)
         with ExportBufferManager("Job Runs Buffer", self._spark, tgt,
-                           ["job_id", "run_id", JobRunData.workspace_url_key()], max_buffer_size=self._buffer_size) as buf:
+                                 ["job_id", "run_id", JobRunData.workspace_url_key()],
+                                 max_buffer_size=self._buffer_size) as buf:
             for r in self.job_runs_iter():
                 data = JobRunData.from_api_to_dict(r, self._workspace_name, self._host.rstrip("/"))
                 buf.add_one(data)  # buffers n records and merges into
+
+
+class JobsTableHelper:
+    def __init__(self,
+                 spark: SparkSession,
+                 target_table_location: str):
+        self._spark = spark
+        self._target_table_location = target_table_location
+        self._table_path = f"delta.`{target_table_location}`"
+
+    def _last_n_days_job_clusters_sql(self, last_n_days=7):
+        start_time = time.time() * 1000 - last_n_days * 24 * 60 * 60 * 1000
+        return f"""SELECT DISTINCT explode(array_distinct(filter(
+          array_union(
+            from_json(_raw_data:tasks[*].cluster_instance.cluster_id, "array<string>"),
+            array(_raw_data:cluster_instance:cluster_id)
+          )  , x -> x is not null))) as distinct_clusters 
+          FROM delta.`dbfs:/tmp/sri/jobs_delta_dump_v3`
+          WHERE start_time > {start_time}
+        """
+
+    def last_n_days_job_clusters(self, last_n_days=7):
+        return self._spark.sql(self._last_n_days_job_clusters_sql(last_n_days))
