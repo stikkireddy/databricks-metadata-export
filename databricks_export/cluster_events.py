@@ -53,9 +53,13 @@ class ClusterEventsHandler:
 
     def is_cluster_valid(self, cluster_id):
         if self._jobs_only:
-            return self.get_cluster_info(cluster_id)["cluster_source"] in [
-            "JOB", "SQL", "MODELS", "PIPELINE", "PIPELINE_MAINTAINANCE"
-            ]
+            cluster_json = self.get_cluster_info(cluster_id)
+            try:
+                return cluster_json["cluster_source"] in [
+                "JOB", "SQL", "MODELS", "PIPELINE", "PIPELINE_MAINTAINANCE"
+                ]
+            except KeyError:
+                print(cluster_json)
         return True
 
     def run(self):
