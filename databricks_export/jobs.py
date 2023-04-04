@@ -2,11 +2,10 @@ import time
 from dataclasses import dataclass
 from typing import Optional
 
-import requests
 from delta import DeltaTable
 from pyspark.sql import SparkSession
 
-from databricks_export import BaseData
+from databricks_export import BaseData, get_http_session
 from databricks_export.buffer import ExportBufferManager
 
 
@@ -52,6 +51,7 @@ class JobRunsHandler:
             .save(self._target_table_location)
 
     def job_runs_iter(self):
+        session = get_http_session()
         api = f'{self._host.rstrip("/")}/api/2.1/jobs/runs/list'
         api_params = {
             "limit": 25,
@@ -62,7 +62,7 @@ class JobRunsHandler:
             start_time = time.time() * 1000 - self._last_n_days * 24 * 60 * 60 * 1000
             api_params["start_time_from"] = start_time
         api_auth = {"Authorization": f"Bearer {self._token}"}
-        resp = requests.get(api, params=api_params, headers=api_auth).json()
+        resp = session.get(api, params=api_params, headers=api_auth).json()
         for run in resp.get("runs", []):
             yield run
         # Call the API and retrieve the data
@@ -70,7 +70,7 @@ class JobRunsHandler:
         has_more = True
         while has_more:
             api_params["offset"] = offset
-            resp = requests.get(api, params=api_params, headers=api_auth).json()
+            resp = session.get(api, params=api_params, headers=api_auth).json()
             for run in resp.get("runs", []):
                 yield run
             offset += api_params["limit"]

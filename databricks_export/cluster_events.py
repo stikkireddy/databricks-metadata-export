@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from typing import List
 
-import requests
+from delta import DeltaTable
 from pyspark.sql import SparkSession
 
-from databricks_export import BaseData
+from databricks_export import BaseData, get_http_session
 from databricks_export.buffer import ExportBufferManager
 
 
@@ -42,12 +42,13 @@ class ClusterEventsHandler:
             .save(self._target_table_location)
 
     def get_cluster_info(self, cluster_id):
+        session = get_http_session()
         api = f'{self._host.rstrip("/")}/api/2.0/clusters/get'
         api_params = {
             "cluster_id": cluster_id,
         }
         api_auth = {"Authorization": f"Bearer {self._token}"}
-        resp = requests.get(api, json=api_params, headers=api_auth).json()
+        resp = session.get(api, json=api_params, headers=api_auth).json()
         return resp
 
     def is_cluster_valid(self, cluster_id):
@@ -70,6 +71,7 @@ class ClusterEventsHandler:
                     print(data)
                     buf.add_one(data)  # buffers n records and merges into
     def cluster_events_iter(self, cluster_id):
+        session = get_http_session()
         if self.is_cluster_valid(cluster_id) is False:
             print(f"Cluster: {cluster_id} is not valid.")
             return
@@ -80,13 +82,13 @@ class ClusterEventsHandler:
             "order": "DESC"
         }
         api_auth = {"Authorization": f"Bearer {self._token}"}
-        resp = requests.post(api, json=api_params, headers=api_auth).json()
+        resp = session.post(api, json=api_params, headers=api_auth).json()
         for event in resp.get("events", []):
             yield event
         # Call the API and retrieve the data
         next_page = resp.get("next_page", None)
         while next_page is not None:
-            resp = requests.post(api, json=next_page, headers=api_auth).json()
+            resp = session.post(api, json=next_page, headers=api_auth).json()
             for event in resp.get("events", []):
                 yield event
             next_page  = resp.get("next_page", None)

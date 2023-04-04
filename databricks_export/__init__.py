@@ -1,9 +1,14 @@
+import functools
 import json
+import os
 import typing
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
 
+import requests
 from pyspark.sql.types import StructField, LongType, StringType, StructType
+from requests.adapters import HTTPAdapter
+from urllib3 import Retry
 
 
 def is_optional(field):
@@ -51,3 +56,27 @@ class BaseData:
         result_data[cls.workspace_name_key()] = workspace_name
         result_data[cls.workspace_url_key()] = workspace_url
         return result_data
+
+
+
+def get_retry_class(max_retries):
+    class LogRetry(Retry):
+      """
+         Adding extra logs before making a retry request
+      """
+      def __init__(self, *args, **kwargs):
+        if kwargs.get("total", None) != max_retries and kwargs.get("total", None) > 0:
+            print(f'Retrying with kwargs: {kwargs}')
+        super().__init__(*args, **kwargs)
+
+    return LogRetry
+
+@functools.lru_cache(maxsize=None)
+def get_http_session():
+    s = requests.Session()
+    max_retries = int(os.getenv("DATABRICKS_REQUEST_RETRY_COUNT", 10))
+    retries = get_retry_class(max_retries)\
+        (total=max_retries, backoff_factor=1, status_forcelist=[500, 501, 502, 503, 504, 429])
+    s.mount("https://", HTTPAdapter(max_retries=retries))
+    s.mount("http://", HTTPAdapter(max_retries=retries))
+    return s
