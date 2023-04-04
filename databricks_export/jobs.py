@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from delta import DeltaTable
+from pyspark import Row
 from pyspark.pandas import DataFrame
 from pyspark.sql import SparkSession
 
@@ -115,6 +116,7 @@ class JobsTableHelper:
     def last_n_days_job_clusters_iter(self, last_n_days=7):
         for row in self.last_n_days_job_clusters_df(last_n_days).collect():
             # look above for column name
-            yield row.get("distinct_cluster_id", None)
+            row: Row
+            yield row.asDict().get("distinct_cluster_id", None)
 
 
