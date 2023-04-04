@@ -48,18 +48,18 @@ class ClusterEventsHandler:
             "cluster_id": cluster_id,
         }
         api_auth = {"Authorization": f"Bearer {self._token}"}
-        resp = session.get(api, json=api_params, headers=api_auth).json()
-        return resp
+        resp = session.get(api, json=api_params, headers=api_auth)
+        return resp.json(), resp.status_code
 
     def is_cluster_valid(self, cluster_id):
+        cluster_json, status_code = self.get_cluster_info(cluster_id)
+        if 400 <= status_code <= 420:
+            print(f"Error for cluster: {cluster_json} error -> {cluster_json}")
+            return False
         if self._jobs_only:
-            cluster_json = self.get_cluster_info(cluster_id)
-            try:
-                return cluster_json["cluster_source"] in [
+            return cluster_json["cluster_source"] in [
                 "JOB", "SQL", "MODELS", "PIPELINE", "PIPELINE_MAINTAINANCE"
-                ]
-            except KeyError:
-                print(cluster_json)
+            ]
         return True
 
     def run(self):
@@ -72,7 +72,6 @@ class ClusterEventsHandler:
             for cluster_id in self._cluster_ids:
                 for r in self.cluster_events_iter(cluster_id):
                     data = ClusterEvents.from_api_to_dict(r, self._workspace_name, self._host.rstrip("/"))
-                    print(data)
                     buf.add_one(data)  # buffers n records and merges into
     def cluster_events_iter(self, cluster_id):
         session = get_http_session()
