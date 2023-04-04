@@ -102,10 +102,17 @@ class JobsTableHelper:
           array_union(
             from_json(_raw_data:tasks[*].cluster_instance.cluster_id, "array<string>"),
             array(_raw_data:cluster_instance:cluster_id)
-          )  , x -> x is not null))) as distinct_clusters 
+          )  , x -> x is not null))) as distinct_cluster_id 
           FROM delta.`dbfs:/tmp/sri/jobs_delta_dump_v3`
           WHERE start_time > {start_time}
         """
 
-    def last_n_days_job_clusters(self, last_n_days=7):
+    def last_n_days_job_clusters_df(self, last_n_days=7):
         return self._spark.sql(self._last_n_days_job_clusters_sql(last_n_days))
+
+    def last_n_days_job_clusters_iter(self, last_n_days=7):
+        for row in self._spark.sql(self._last_n_days_job_clusters_sql(last_n_days)).collect():
+            # look above for column name
+            yield row.get("distinct_cluster_id", None)
+
+
